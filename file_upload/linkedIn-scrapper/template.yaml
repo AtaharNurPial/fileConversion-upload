@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  linkedIn-scrapper
+
+  Sample SAM Template for linkedIn-scrapper
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Parameters:
+  StackName:
+    Type: String
+    Default: linkedIn-scrapper
+  S3BucketName:
+    Type: String
+    Default: linkedin-scrapper-bucket
+  StageName:
+    Type: String
+
+Globals:
+  Function:
+    Timeout: 20
+    Runtime: python3.8
+    Architectures:
+      - x86_64
+
+Resources:
+
+  # LambdaExecutionRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     RoleName: LambdaExecutionRole
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: lambda.amazonaws.com
+  #           Action:
+  #             - sts:AssumeRole
+  #     ManagedPolicyArns:
+  #       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  #     Policies:
+  #       - PolicyName: MyApiGatewayInvokePolicy
+  #         PolicyDocument:
+  #           Version: "2012-10-17"
+  #           Statement:
+  #             - Effect: Allow
+  #               Action: "lambda:InvokeFunction"
+  #               Resource: !GetAtt GetSignedUrlFunction.Arn
+
+  # DefaultApi:
+  #   Type: AWS::Serverless::Api
+  #   Properties:
+  #     TracingEnabled: true
+  #     StageName: !Ref StageName
+  #     GatewayResponses:
+  #       DEFAULT_4XX:
+  #         ResponseParameters:
+  #           Headers:
+  #             Access-Control-Allow-Origin: "'*'"
+  #             Access-Control-Allow-Headers: "'*'"
+  #       DEFAULT_5XX:
+  #         ResponseParameters:
+  #           Headers:
+  #             Access-Control-Allow-Origin: "'*'"
+  #             Access-Control-Allow-Headers: "'*'"
+  #     Cors:
+  #       AllowMethods: "'*'"
+  #       AllowHeaders: "'*'"
+  #       AllowOrigin: "'*'"
+  #     Auth:
+  #       DefaultAuthorizer:
+  #         AuthorizerUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetSignedUrlFunction.Arn}/invocations"
+  #         AuthorizerResultTtlInSeconds: 300
+  #         IdentitySource: "method.request.header.Authorization"
+
+  GetSignedUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/
+      Handler: get_signed_url.lambda_handler
+      Environment:
+        Variables:   
+          S3BUCKETNAME: !Ref S3Bucket
+      # Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        getUrlEvent:
+          Type: Api
+          Properties:
+            Path:  /get
+            Method: post
+            RestApiId: !Ref DefaultApi
+            # Auth:
+            #   Authorizer: NONE
+  
+  DefaultApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref StageName
+
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: linkedin-scrapper-bucket
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: 
+              - '*'
+            AllowedOrigins: 
+              - '*'
+            AllowedMethods:
+              - PUT
+              - POST 
+              - DELETE
+              - GET
+            AllowedOrigins: 
+              - '*'
+            ExposedHeaders:
+              - ETag
+              - x-amz-meta-custom-header
+
+
+Outputs:
+  S3BucketName:
+    Value: !Ref S3Bucket
+    Export:
+      Name: S3BucketName
+  CreateFunctionApi:
+    Description: "API Gateway endpoint URL for Prod stage of get signed url function"
+    Value: !Sub "https://${DefaultApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/get"
