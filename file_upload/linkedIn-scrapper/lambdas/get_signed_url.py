@@ -14,7 +14,7 @@ def lambda_handler(event, context):
         print(f"{response_dict = }")
         obj_name = response_dict.get('key')
 
-        response = create_presigned_url(bucket_name=bucket_name,object_name=f"{obj_name}.csv")
+        response = create_presigned_url(bucket_name=bucket_name,object_name=f"{obj_name}.json")
         print(f"{response = }")
 
         return {
